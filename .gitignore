@@ -1,0 +1,17 @@
+node_modules/
+.next/
+out/
+dist/
+coverage/
+.venv/
+__pycache__/
+.pytest_cache/
+*.py[cod]
+.env
+.env.local
+backend/.env
+frontend/.env.local
+.DS_Store
+Thumbs.db
+
+frontend/tsconfig.tsbuildinfo
