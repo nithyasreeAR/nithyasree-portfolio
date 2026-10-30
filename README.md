@@ -10,7 +10,7 @@ A responsive portfolio built with Next.js, React, TypeScript, Tailwind CSS and F
 
 ## Start PostgreSQL
 
-For local PostgreSQL, create a database named `portfolio` and use a role with permission to create its tables. For Docker, from the repository root run `docker compose up -d db`. The local development database defaults to `portfolio:portfolio@localhost:5432/portfolio`; set a different URL in `backend/.env` when needed.
+For local PostgreSQL, create a database named `portfolio` and use a role with permission to create its tables. For Docker, from the repository root run `docker compose up -d db`. The backend reads `DATABASE_URL` from the process environment first, then `backend/.env`, then the repository root `.env.local`. Docker Compose points the backend at its `db` service by default; direct local runs use the configured URL.
 
 ## Start the backend
 
@@ -30,7 +30,7 @@ The API is at `http://localhost:8000`; API documentation is at `http://localhost
 
 ### Contact email notifications
 
-Submissions are first saved in PostgreSQL, then the backend sends an email notification to `CONTACT_RECIPIENT_EMAIL`. Configure `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, and `SMTP_FROM_EMAIL` in `backend/.env`. For Gmail, use an app password for the sending account rather than its regular password. Keep that credential private and only in the backend environment. The API returns `email_sent` separately: the website confirms database storage and clearly reports if the SMTP notification fails.
+Submissions are saved to PostgreSQL before notification delivery is attempted. For Resend, configure `RESEND_API_KEY`, `RESEND_FROM_EMAIL`, and `CONTACT_RECIPIENT_EMAIL` in `backend/.env` or the backend host environment. `RESEND_FROM_EMAIL` must use a domain verified in the same Resend account as the API key; do not use `onboarding@resend.dev` for production. Resend API keys restricted to a domain must also authorize the sender's domain. Gmail SMTP remains an optional fallback via `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, and `SMTP_FROM_EMAIL`; Gmail requires an app password, and some hosts block SMTP. Keep credentials private and only in the backend environment. The API returns `email_sent` separately, so a delivery failure does not undo the saved submission.
 
 ## Start the frontend
 
@@ -68,4 +68,4 @@ Backend: `python -m pytest` (from `backend`). Contact schema validation is cover
 
 ## Contact storage and privacy
 
-Submissions are validated and stored in PostgreSQL before the API confirms receipt. When configured, SMTP sends the notification to the portfolio owner and sets `email_sent`; if delivery fails, the stored message remains saved and the frontend reports the email failure. The public form includes field length limits, server-side validation, a honeypot, and an in-memory limit of five submissions per client IP per minute. For multi-instance production hosting, move rate limiting to a shared store. Keep database and SMTP credentials out of frontend variables and use restricted, strong credentials in production.
+Submissions are validated and stored in PostgreSQL before the API confirms receipt. When configured, Resend or SMTP sends the notification to the portfolio owner and sets `email_sent`; if delivery fails, the stored message remains saved and the frontend reports the email failure. The public form includes field length limits, server-side validation, a honeypot, and an in-memory limit of five submissions per client IP per minute. For multi-instance production hosting, move rate limiting to a shared store. Keep database and email credentials out of frontend variables and use restricted, strong credentials in production.

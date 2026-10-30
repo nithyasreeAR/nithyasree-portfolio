@@ -5,3 +5,4 @@ psycopg[binary]>=3.2,<4
 pydantic-settings>=2.5,<3
 email-validator>=2.2,<3
 alembic>=1.13,<2
+resend>=2,<3

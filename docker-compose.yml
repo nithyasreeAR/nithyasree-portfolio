@@ -16,9 +16,13 @@ services:
       retries: 10
   backend:
     build: ./backend
-    env_file: ./backend/.env
+    env_file:
+      - path: ./backend/.env
+        required: false
     ports:
       - "8000:8000"
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://portfolio:portfolio@db:5432/portfolio}
     depends_on:
       db:
         condition: service_healthy
