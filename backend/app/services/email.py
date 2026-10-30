@@ -1,7 +1,9 @@
+
+import json
 import logging
-import smtplib
-import ssl
-from email.message import EmailMessage
+import os
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
 
 from app.core.config import settings
 from app.models import ContactSubmission
@@ -10,34 +12,66 @@ logger = logging.getLogger(__name__)
 
 
 def send_contact_notification(submission: ContactSubmission) -> bool:
-    """Send a notification to the portfolio owner; return False when SMTP is unavailable."""
-    required = (settings.smtp_host, settings.smtp_username, settings.smtp_password, settings.smtp_from_email)
-    if not all(required):
-        logger.warning("Contact email notification is not configured")
+    """Send a contact notification using the Resend API."""
+
+    api_key = os.getenv("RESEND_API_KEY", "").strip()
+
+    if not api_key:
+        logger.warning("Resend API key is not configured")
         return False
 
-    message = EmailMessage()
-    message["Subject"] = f"Portfolio contact: {submission.subject}"
-    message["From"] = settings.smtp_from_email
-    message["To"] = settings.contact_recipient_email
-    message["Reply-To"] = submission.email
-    message.set_content(
-        "A new message was submitted through your portfolio contact form.\n\n"
-        f"Name: {submission.name}\n"
-        f"Email: {submission.email}\n"
-        f"Subject: {submission.subject}\n\n"
-        "Message:\n"
-        f"{submission.message}\n\n"
-        f"Submission ID: {submission.id}\n"
+    payload = {
+        "from": "Portfolio Contact <onboarding@resend.dev>",
+        "to": [settings.contact_recipient_email],
+        "reply_to": submission.email,
+        "subject": f"Portfolio contact: {submission.subject}",
+        "text": (
+            "A new message was submitted through your portfolio contact form.\n\n"
+            f"Name: {submission.name}\n"
+            f"Email: {submission.email}\n"
+            f"Subject: {submission.subject}\n\n"
+            "Message:\n"
+            f"{submission.message}\n\n"
+            f"Submission ID: {submission.id}\n"
+        ),
+    }
+
+    request = Request(
+        "https://api.resend.com/emails",
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
     )
 
     try:
-        with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=settings.smtp_timeout_seconds) as client:
-            if settings.smtp_use_tls:
-                client.starttls(context=ssl.create_default_context())
-            client.login(settings.smtp_username, settings.smtp_password)
-            client.send_message(message)
-    except (OSError, smtplib.SMTPException):
-        logger.exception("Contact submission %s was saved, but its email notification failed", submission.id)
+        with urlopen(request, timeout=20) as response:
+            if response.status not in (200, 201):
+                logger.error(
+                    "Resend returned unexpected status %s",
+                    response.status,
+                )
+                return False
+
+        logger.info(
+            "Contact submission %s email notification sent",
+            submission.id,
+        )
+        return True
+
+    except HTTPError as exc:
+        logger.error(
+            "Resend API rejected contact submission %s: HTTP %s",
+            submission.id,
+            exc.code,
+        )
         return False
-    return True
+
+    except (URLError, OSError, TimeoutError):
+        logger.exception(
+            "Contact submission %s was saved, but its email notification failed",
+            submission.id,
+        )
+        return False
