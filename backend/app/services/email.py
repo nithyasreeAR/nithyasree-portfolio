@@ -62,10 +62,12 @@ def send_contact_notification(submission: ContactSubmission) -> bool:
         return True
 
     except HTTPError as exc:
+        error_body = exc.read().decode("utf-8", errors="replace")
         logger.error(
-            "Resend API rejected contact submission %s: HTTP %s",
+            "Resend API rejected contact submission %s: HTTP %s - %s",
             submission.id,
             exc.code,
+            error_body,
         )
         return False
 
