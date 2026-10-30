@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+psycopg://portfolio:portfolio@localhost:5432/portfolio"
     frontend_origins: str = "http://localhost:3000"
     resend_api_key: str = ""
-    resend_from_email: str = ""
+    resend_from_email: str = "onboarding@resend.dev"
     contact_recipient_email: str = "nithyasree2904@gmail.com"
     smtp_host: str = ""
     smtp_port: int = 587
@@ -27,6 +27,11 @@ class Settings(BaseSettings):
         env_file=(BACKEND_ROOT / ".env", PROJECT_ROOT / ".env.local"),
         extra="ignore",
     )
+
+    @field_validator("resend_from_email", mode="before")
+    @classmethod
+    def default_resend_sender(cls, value: str) -> str:
+        return value.strip() if isinstance(value, str) and value.strip() else "onboarding@resend.dev"
 
     @field_validator("database_url", mode="before")
     @classmethod
